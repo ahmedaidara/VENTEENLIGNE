@@ -517,6 +517,51 @@
             from { transform: translateY(50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+      
+      /* Message d'annulation */
+.cancellation-message {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 15px;
+    text-align: center;
+    margin: 20px 0;
+    animation: slideDown 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.cancellation-message i {
+    font-size: 1.5rem;
+}
+
+.cancellation-message .close-cancel {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.cancellation-message .close-cancel:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
     </style>
 </head>
 <body>
@@ -725,77 +770,141 @@
             });
         }
 
-        function updateTrackingUI(order) {
-            const section = document.getElementById('orderTrackingSection');
-           if (order.status === 'livre' && (order.paymentStatus === 'paye' || order.paymentStatus === 'payé')) {
-        if (section) section.style.display = 'none';
-        return; // Sortir de la fonction, n'affiche rien
-    }
-            if (section) section.style.display = 'block';
-            
-            const status = order.status || 'en_attente';
-            const steps = ['en_attente', 'en_livraison', 'livre'];
-            const currentIndex = steps.indexOf(status);
-            
-            for (let i = 0; i < 3; i++) {
-                const circle = document.getElementById(`step${i+1}Circle`);
-                const label = document.getElementById(`step${i+1}Label`);
-                if (!circle) continue;
-                if (i < currentIndex) {
-                    circle.classList.add('completed');
-                    circle.classList.remove('active');
-                    if(label) label.classList.add('completed');
-                    circle.innerHTML = '<i class="fas fa-check"></i>';
-                } else if (i === currentIndex) {
-                    circle.classList.add('active');
-                    circle.classList.remove('completed');
-                    if(label) label.classList.add('active');
-                    circle.innerHTML = (i+1).toString();
-                } else {
-                    circle.classList.remove('active', 'completed');
-                    if(label) label.classList.remove('active', 'completed');
-                    circle.innerHTML = (i+1).toString();
-                }
-            }
-            
-            const progressPercent = (currentIndex / 2) * 100;
-            const fill = document.getElementById('progressFill');
-            if (fill) fill.style.width = `${progressPercent}%`;
-            
-            const date = order.createdAt?.toDate() || new Date();
-            const orderNumElem = document.getElementById('trackOrderNumber');
-            if (orderNumElem) orderNumElem.textContent = order.orderNumber || order.id.slice(0, 8);
-            const orderDateElem = document.getElementById('trackOrderDate');
-            if (orderDateElem) orderDateElem.textContent = date.toLocaleDateString('fr-FR');
-            const orderTotalElem = document.getElementById('trackOrderTotal');
-            if (orderTotalElem) orderTotalElem.textContent = (order.total || 0).toLocaleString('fr-FR') + ' F CFA';
-            
-            let paymentText = '';
-if (order.paymentStatus === 'paye') {
-    paymentText = '✅ Payé';
-} else if (order.paymentStatus === 'partiel') {
-    const recu = order.paymentReceived || 0;
-    const reste = order.paymentRemaining || (order.total - recu);
-    paymentText = `💰 Partiel: ${recu.toLocaleString('fr-FR')}F reçu | Reste: ${reste.toLocaleString('fr-FR')}F`;
-} else {
-    paymentText = '⏳ Impayé';
-}
-            const paymentElem = document.getElementById('trackPaymentStatus');
-            if (paymentElem) paymentElem.textContent = paymentText;
-            
-            const msgDiv = document.getElementById('statusMessage');
-            if (msgDiv) {
-                let statusText = '';
-                if (status === 'en_attente') statusText = '⏳ Votre commande est en cours de traitement, contacter 771234567 pour une prise en charge plus rapide';
-                else if (status === 'en_livraison') statusText = '🚚 Votre commande est en route, encore peu de temps !';
-                else statusText = '🎉 Votre commande a été livrée, merci pour la confiance !';
-                msgDiv.className = `status-message ${status}`;
-                msgDiv.innerHTML = statusText;
-            }
-            
-            const orderSpan = document.getElementById('currentOrderNumber');
-            if (orderSpan) orderSpan.textContent = `#${order.orderNumber || order.id.slice(0,8)}`;
+       function updateTrackingUI(order) {
+    const section = document.getElementById('orderTrackingSection');
+    
+    // Vérifier si la commande est ANNULÉE
+    if (order.status === 'annulee') {
+        if (section) {
+            section.style.display = 'block';
+            // Afficher un message d'annulation à la place du suivi normal
+            section.innerHTML = `
+                <div class="cancellation-message" id="cancelMessage">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <i class="fas fa-ban"></i>
+                        <div>
+                            <strong>❌ DERNIÈRE COMMANDE ANNULÉE AVEC SUCCÈS</strong><br>
+                            <small>Commande #${order.orderNumber || order.id.slice(0,8)} annulée le ${new Date(order.cancelledAt?.toDate() || Date.now()).toLocaleDateString('fr-FR')}</small>
+                        </div>
+                    </div>
+                    <button class="close-cancel" onclick="closeCancellationMessage()">
+                        <i class="fas fa-times"></i> Fermer
+                    </button>
+                </div>
+            `;
         }
+        return;
+    }
+    
+    // Si commande livrée ET payée, ne pas afficher
+    if (order.status === 'livre' && (order.paymentStatus === 'paye' || order.paymentStatus === 'payé')) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+    
+    // Restaure l'affichage normal si la section a été modifiée
+    if (section && section.innerHTML.indexOf('cancellation-message') !== -1) {
+        // Reconstruire la section normale
+        section.innerHTML = `
+            <h3>
+                <i class="fas fa-truck"></i> Suivi de ma commande
+                <span class="order-number" id="currentOrderNumber"></span>
+                <button class="refresh-tracking" onclick="refreshOrderStatus()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </h3>
+            <div class="progress-container">
+                <div class="progress-steps">
+                    <div class="progress-step"><div class="step-circle" id="step1Circle">1</div><div class="step-label" id="step1Label">📝 En traitement</div></div>
+                    <div class="progress-step"><div class="step-circle" id="step2Circle">2</div><div class="step-label" id="step2Label">🚚 En livraison</div></div>
+                    <div class="progress-step"><div class="step-circle" id="step3Circle">3</div><div class="step-label" id="step3Label">✅ Livré</div></div>
+                </div>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="progressFill"></div></div>
+                <div class="order-info-card">
+                    <div class="info-item"><div class="label">Date</div><div class="value" id="trackOrderDate">-</div></div>
+                    <div class="info-item"><div class="label">Total</div><div class="value" id="trackOrderTotal">-</div></div>
+                    <div class="info-item"><div class="label">Paiement</div><div class="value" id="trackPaymentStatus">-</div></div>
+                </div>
+                <div class="status-message" id="statusMessage"></div>
+            </div>
+        `;
+    }
+    
+    if (section) section.style.display = 'block';
+    
+    const status = order.status || 'en_attente';
+    const steps = ['en_attente', 'en_livraison', 'livre'];
+    const currentIndex = steps.indexOf(status);
+    
+    for (let i = 0; i < 3; i++) {
+        const circle = document.getElementById(`step${i+1}Circle`);
+        const label = document.getElementById(`step${i+1}Label`);
+        if (!circle) continue;
+        if (i < currentIndex) {
+            circle.classList.add('completed');
+            circle.classList.remove('active');
+            if(label) label.classList.add('completed');
+            circle.innerHTML = '<i class="fas fa-check"></i>';
+        } else if (i === currentIndex) {
+            circle.classList.add('active');
+            circle.classList.remove('completed');
+            if(label) label.classList.add('active');
+            circle.innerHTML = (i+1).toString();
+        } else {
+            circle.classList.remove('active', 'completed');
+            if(label) label.classList.remove('active', 'completed');
+            circle.innerHTML = (i+1).toString();
+        }
+    }
+    
+    const progressPercent = (currentIndex / 2) * 100;
+    const fill = document.getElementById('progressFill');
+    if (fill) fill.style.width = `${progressPercent}%`;
+    
+    const date = order.createdAt?.toDate() || new Date();
+    const orderNumElem = document.getElementById('trackOrderNumber');
+    if (orderNumElem) orderNumElem.textContent = order.orderNumber || order.id.slice(0, 8);
+    const orderDateElem = document.getElementById('trackOrderDate');
+    if (orderDateElem) orderDateElem.textContent = date.toLocaleDateString('fr-FR');
+    const orderTotalElem = document.getElementById('trackOrderTotal');
+    if (orderTotalElem) orderTotalElem.textContent = (order.total || 0).toLocaleString('fr-FR') + ' F CFA';
+    
+    let paymentText = '';
+    if (order.paymentStatus === 'paye') {
+        paymentText = '✅ Payé';
+    } else if (order.paymentStatus === 'partiel') {
+        const recu = order.paymentReceived || 0;
+        const reste = order.paymentRemaining || (order.total - recu);
+        paymentText = `💰 Partiel: ${recu.toLocaleString('fr-FR')}F reçu | Reste: ${reste.toLocaleString('fr-FR')}F`;
+    } else {
+        paymentText = '⏳ Impayé';
+    }
+    const paymentElem = document.getElementById('trackPaymentStatus');
+    if (paymentElem) paymentElem.textContent = paymentText;
+    
+    const msgDiv = document.getElementById('statusMessage');
+    if (msgDiv) {
+        let statusText = '';
+        if (status === 'en_attente') statusText = '⏳ Votre commande est en cours de traitement, contacter 771234567 pour une prise en charge plus rapide';
+        else if (status === 'en_livraison') statusText = '🚚 Votre commande est en route, encore peu de temps !';
+        else statusText = '🎉 Votre commande a été livrée, merci pour la confiance !';
+        msgDiv.className = `status-message ${status}`;
+        msgDiv.innerHTML = statusText;
+    }
+    
+    const orderSpan = document.getElementById('currentOrderNumber');
+    if (orderSpan) orderSpan.textContent = `#${order.orderNumber || order.id.slice(0,8)}`;
+}
+
+// Fonction pour fermer le message d'annulation
+function closeCancellationMessage() {
+    const section = document.getElementById('orderTrackingSection');
+    if (section) {
+        section.style.display = 'none';
+    }
+    // Optionnel: supprimer aussi le localStorage pour ne plus voir l'ancienne commande
+    // localStorage.removeItem('lastOrderId');
+}
 
         function refreshOrderStatus() {
             if (currentOrderId) {
