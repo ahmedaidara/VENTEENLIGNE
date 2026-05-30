@@ -689,16 +689,16 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        const categories = [
-            { id: 1, name: "Très petits", weight: "1.0 - 1.1 kg", price: 2000, image: "https://images.unsplash.com/photo-1587593819583-6c44a2ca65e5?w=400" },
-            { id: 2, name: "Petits", weight: "1.2 kg", price: 2500, image: "https://images.unsplash.com/photo-1587593819583-6c44a2ca65e5?w=400" },
-            { id: 3, name: "Moyens-petits", weight: "1.3 - 1.4 kg", price: 3000, image: "https://images.unsplash.com/photo-1587593819583-6c44a2ca65e5?w=400" },
-            { id: 4, name: "Moyens", weight: "1.5 - 1.6 kg", price: 3300, image: "https://images.unsplash.com/photo-1587593819583-6c44a2ca65e5?w=400" },
-            { id: 5, name: "Moyens-grands", weight: "1.7 - 1.9 kg", price: 3500, image: "https://images.unsplash.com/photo-1587593819583-6c44a2ca65e5?w=400" },
-            { id: 6, name: "Grands", weight: "2.0 kg", price: 3700, image: "https://images.unsplash.com/photo-1587593819583-6c44a2ca65e5?w=400" },
-            { id: 7, name: "Très grands", weight: "2.1 - 2.3 kg", price: 4000, image: "https://images.unsplash.com/photo-1587593819583-6c44a2ca65e5?w=400" },
-            { id: 8, name: "Géants", weight: "+2.4 kg", price: 4500, image: "https://images.unsplash.com/photo-1587593819583-6c44a2ca65e5?w=400" }
-        ];
+ const categories = [
+    { id: 1, name: "Très petits", weight: "1.0 - 1.1 kg", price: 2000, image: "https://cdn.pixabay.com/photo/2016/02/05/12/31/chicken-1180628_640.jpg" },
+    { id: 2, name: "Petits", weight: "1.2 kg", price: 2500, image: "https://cdn.pixabay.com/photo/2019/03/20/20/39/chicken-4068653_640.jpg" },
+    { id: 3, name: "Moyens-petits", weight: "1.3 - 1.4 kg", price: 3000, image: "https://cdn.pixabay.com/photo/2016/08/30/13/21/rotisserie-chicken-1631133_640.jpg" },
+    { id: 4, name: "Moyens", weight: "1.5 - 1.6 kg", price: 3300, image: "https://cdn.pixabay.com/photo/2017/02/01/12/12/roast-chicken-2029664_640.jpg" },
+    { id: 5, name: "Moyens-grands", weight: "1.7 - 1.9 kg", price: 3500, image: "https://cdn.pixabay.com/photo/2014/11/05/15/57/chicken-518874_640.jpg" },
+    { id: 6, name: "Grands", weight: "2.0 kg", price: 3700, image: "https://cdn.pixabay.com/photo/2018/05/25/10/16/chicken-3428504_640.jpg" },
+    { id: 7, name: "Très grands", weight: "2.1 - 2.3 kg", price: 4000, image: "https://cdn.pixabay.com/photo/2015/11/17/15/39/grilled-chicken-1047768_640.jpg" },
+    { id: 8, name: "Géants", weight: "+2.4 kg", price: 4500, image: "https://cdn.pixabay.com/photo/2020/09/18/21/54/chicken-5583818_640.jpg" }
+];
 
         let cart = [];
         let quantities = {};
@@ -1022,7 +1022,8 @@ function clearCartAfterOrder() {
             }
             
             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const order = {
+                       const order = {
+                boutique: 'en-ligne',  // ← AJOUTEZ CETTE LIGNE ICI
                 client: {
                     name: document.getElementById('fullName').value.trim() || 'Client',
                     phone: phone,
@@ -1068,9 +1069,205 @@ function clearCartAfterOrder() {
                 showNotification('Erreur: ' + error.message, 'error');
             }
         };
- 
-        loadProducts();
-        loadCartFromLocal(); 
+         // ========== GESTION DES STOCKS TIKTOK SHOP ==========
+        let currentStockData = null;
+        let currentProductionData = null;
+
+        // Charger le stock disponible pour TikTok Shop
+        async function loadTikTokStock() {
+            try {
+                const stockSnapshot = await db.collection('stocks_attribues')
+                    .where('boutique', '==', 'en-ligne')
+                    .where('status', '==', 'active')
+                    .limit(1)
+                    .get();
+                
+                if (stockSnapshot.empty) {
+                    console.log('Aucun stock trouvé pour TikTok Shop');
+                    return null;
+                }
+                
+                const stockDoc = stockSnapshot.docs[0];
+                currentStockData = { id: stockDoc.id, ...stockDoc.data() };
+                
+                const prodDoc = await db.collection('poulailler_records').doc(currentStockData.productionId).get();
+                if (prodDoc.exists) {
+                    currentProductionData = prodDoc.data();
+                }
+                
+                console.log('Stock TikTok chargé:', currentStockData);
+                return currentStockData;
+                
+            } catch (error) {
+                console.error('Erreur chargement stock:', error);
+                return null;
+            }
+        }
+
+        // Obtenir le stock restant pour une catégorie
+        function getRemainingStockForCategory(categoryId) {
+            if (!currentStockData || !currentStockData.categories) return 0;
+            const attribue = currentStockData.categories[categoryId] || 0;
+            const vendu = currentStockData.soldByCategory?.[categoryId] || 0;
+            return Math.max(0, attribue - vendu);
+        }
+
+        // Obtenir le total restant
+        function getTotalRemainingStock() {
+            if (!currentStockData || !currentStockData.categories) return 0;
+            let total = 0;
+            for (let i = 1; i <= 8; i++) {
+                total += getRemainingStockForCategory(i.toString());
+            }
+            return total;
+        }
+
+        // Afficher les produits avec les stocks réels
+        async function loadProductsWithStock() {
+            await loadTikTokStock();
+            
+            const grid = document.getElementById('productsGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            if (!currentStockData) {
+                grid.innerHTML = `
+                    <div style="text-align: center; padding: 50px; background: white; border-radius: 20px; grid-column: 1/-1;">
+                        <i class="fas fa-box-open" style="font-size: 3rem; color: #f5a623;"></i>
+                        <h3>Stock temporairement indisponible</h3>
+                        <p>Veuillez revenir plus tard</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const totalRestant = getTotalRemainingStock();
+            
+            // Bandeau récapitulatif
+            
+            
+            // Filtrer les catégories avec stock
+            const categoriesAvecStock = categories.filter(cat => {
+                return getRemainingStockForCategory(cat.id.toString()) > 0;
+            });
+            
+            if (categoriesAvecStock.length === 0) {
+                grid.innerHTML += `
+                    <div style="text-align: center; padding: 50px; background: white; border-radius: 20px; grid-column: 1/-1;">
+                        <i class="fas fa-box-open" style="font-size: 3rem; color: #ef4444;"></i>
+                        <h3>Stock épuisé !</h3>
+                        <p>Revenez bientôt pour passer commande</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Afficher uniquement les catégories disponibles
+            categoriesAvecStock.forEach(cat => {
+                const stockRestant = getRemainingStockForCategory(cat.id.toString());
+                const maxQuantity = Math.min(stockRestant, 50);
+                
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.innerHTML = `
+                    <div class="product-image" style="background-image: url('${cat.image}'); background-size:cover; background-position:center;">
+                        <div class="product-badge">${cat.weight}</div>
+                        ${stockRestant < 10 ? '<div style="position:absolute; bottom:10px; left:10px; background:#ef4444; color:white; padding:3px 8px; border-radius:10px; font-size:0.7rem;">⚠️ Plus que ' + stockRestant + '</div>' : ''}
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${cat.name}</div>
+                        <div class="product-price">${cat.price.toLocaleString('fr-FR')} F CFA</div>
+                                                <div class="quantity-control">
+                            <button class="quantity-btn" onclick="changeQuantityWithLimit(${cat.id}, -1, ${stockRestant})">-</button>
+                            <input type="number" 
+                                   id="qty-${cat.id}" 
+                                   value="0" 
+                                   min="0" 
+                                   max="${stockRestant}"
+                                   step="1"
+                                   onchange="setQuantityWithLimit(${cat.id}, this.value, ${stockRestant})"
+                                   style="width: 70px; text-align: center; border: 2px solid #e0e0e0; border-radius: 8px; padding: 8px; font-size: 1rem;">
+                            <button class="quantity-btn" onclick="changeQuantityWithLimit(${cat.id}, 1, ${stockRestant})">+</button>
+                        </div>
+                        <button class="add-to-cart" onclick="addToCartWithLimit(${cat.id}, ${stockRestant})">
+                            <i class="fas fa-cart-plus"></i> Ajouter
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Changement de quantité avec limite
+                // Changement de quantité avec limite (+ et -)
+        window.changeQuantityWithLimit = (id, delta, maxStock) => {
+            const input = document.getElementById(`qty-${id}`);
+            if (!input) return;
+            
+            let currentQty = parseInt(input.value) || 0;
+            let newQty = currentQty + delta;
+            
+            if (newQty < 0) newQty = 0;
+            if (newQty > maxStock) {
+                const totalRestant = getTotalRemainingStock();
+                showNotification(`⚠️ Stock limité ! Maximum ${maxStock} disponibles. Il reste ${totalRestant} poulets au total.`, 'error');
+                newQty = maxStock;
+            }
+            
+            input.value = newQty;
+            quantities[id] = newQty;
+        };
+   window.setQuantityWithLimit = (id, value, maxStock) => {
+            let newQty = parseInt(value) || 0;
+            if (newQty < 0) newQty = 0;
+            if (newQty > maxStock) {
+                const totalRestant = getTotalRemainingStock();
+                showNotification(`⚠️ Stock limité ! Maximum ${maxStock} disponibles. Il reste ${totalRestant} poulets au total.`, 'error');
+                newQty = maxStock;
+            }
+            quantities[id] = newQty;
+            const input = document.getElementById(`qty-${id}`);
+            if (input) input.value = newQty;
+        };
+        // Ajout au panier avec limite
+        window.addToCartWithLimit = (id, maxStock) => {
+            const qty = quantities[id] || 0;
+            
+            if (qty === 0) {
+                showNotification('Veuillez sélectionner une quantité', 'error');
+                return;
+            }
+            
+            if (qty > maxStock) {
+                const totalRestant = getTotalRemainingStock();
+                showNotification(`⚠️ Quantité trop élevée ! Maximum ${maxStock} disponibles. Stock total restant: ${totalRestant} poulets.`, 'error');
+                return;
+            }
+            
+            const cat = categories.find(c => c.id === id);
+            const existing = cart.find(item => item.id === id);
+            if (existing) {
+                if (existing.quantity + qty > maxStock) {
+                    showNotification(`⚠️ Vous ne pouvez pas ajouter ${qty} de plus. Maximum ${maxStock} au total pour cette catégorie.`, 'error');
+                    return;
+                }
+                existing.quantity += qty;
+            } else {
+                cart.push({ id: cat.id, name: cat.name, price: cat.price, quantity: qty });
+            }
+            
+            quantities[id] = 0;
+            const qtySpan = document.getElementById(`qty-${id}`);
+            if (qtySpan) qtySpan.textContent = '0';
+            
+            updateCartUI();
+            saveCartToLocal();
+            
+            const totalRestant = getTotalRemainingStock();
+            showNotification(`✅ ${qty} x ${cat.name} ajouté au panier !`, 'success');
+        };
+loadProductsWithStock();
+      loadCartFromLocal(); 
         checkLastOrder();
         loadUserInfoFromStorage();
     </script>
