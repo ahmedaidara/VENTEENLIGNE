@@ -988,8 +988,8 @@ function clearCartAfterOrder() {
         [document.getElementById('accountModal'), document.getElementById('cartModal'), document.getElementById('formModal')].forEach(modal => {
             if(modal) modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('active'); };
         });
-
-        // ========== SAUVEGARDE COMPTE ==========
+ 
+        // ========== SAUVEGARDE COMPTE ========== 
         document.getElementById('accountForm').onsubmit = (e) => {
             e.preventDefault();
             const tel1 = document.getElementById('accTel1').value.trim();
@@ -1272,4 +1272,4 @@ loadProductsWithStock();
         loadUserInfoFromStorage();
     </script>
 </body>
-</html>
+</html>   
