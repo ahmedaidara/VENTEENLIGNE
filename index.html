@@ -75,30 +75,45 @@
         .products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 40px; }
         .product-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transition: transform 0.3s; }
         .product-card:hover { transform: translateY(-5px); }
-        .product-image { height: 200px; background-size: cover; background-position: center; position: relative; }
-        .product-badge { position: absolute; top: 15px; right: 15px; background: #f5a623; color: #1a1a2e; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .product-image { height: 200px; position: relative; overflow: hidden; background-color: #f5f5f5; display: flex; align-items: center; justify-content: center; }
+        .product-image img { width: 100%; height: 100%; object-fit: contain; transition: transform 0.3s ease; }
+        .product-image:hover img { transform: scale(1.05); }
+        .product-badge { position: absolute; top: 15px; right: 15px; background: #f5a623; color: #1a1a2e; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; z-index: 2; }
         .product-info { padding: 20px; }
         .product-name { font-size: 1.2rem; font-weight: bold; color: #1a1a2e; }
         .product-price { font-size: 1.5rem; font-weight: bold; color: #f5a623; margin: 10px 0; }
         .quantity-control { display: flex; align-items: center; justify-content: space-between; margin: 15px 0; }
-        .quantity-btn { background: #f0f0f0; border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 1.2rem; cursor: pointer; }
+        .quantity-btn { background: #f0f0f0; border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 1.2rem; cursor: pointer; transition: all 0.2s; }
+        .quantity-btn:hover { background: #e0e0e0; }
         .quantity-value { font-size: 1.2rem; font-weight: bold; min-width: 40px; text-align: center; }
-        .add-to-cart { width: 100%; background: linear-gradient(135deg, #f5a623, #e67e22); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .cart-fab { position: fixed; bottom: 30px; right: 30px; background: linear-gradient(135deg, #f5a623, #e67e22); width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 200; }
+        .add-to-cart { width: 100%; background: linear-gradient(135deg, #f5a623, #e67e22); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        .add-to-cart:hover { opacity: 0.9; transform: translateY(-2px); }
+        .cart-fab { position: fixed; bottom: 30px; right: 30px; background: linear-gradient(135deg, #f5a623, #e67e22); width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s; }
+        .cart-fab:hover { transform: scale(1.05); }
         .cart-fab i { font-size: 2rem; color: white; }
         .cart-count { position: absolute; top: -5px; right: -5px; background: #ff4757; color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
-        .notification { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 50px; z-index: 2000; display: none; }
+        .notification { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 50px; z-index: 2000; display: none; animation: slideUp 0.3s ease; }
         footer { text-align: center; padding: 30px; background: #1a1a2e; color: #888; margin-top: 50px; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #f5a623; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        /* Image lazy loading */
+        img.lazy { opacity: 0; transition: opacity 0.3s ease; }
+        img.lazy.loaded { opacity: 1; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .products-grid { gap: 15px; }
+            .product-image { height: 180px; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="header-left">
             <div class="logo">
-                <img src="https://i.postimg.cc/0QBKNcGj/photo-5782651308169956527-x.jpg" alt="Logo" class="logo-img">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23f5a623'/%3E%3Ctext x='50' y='67' text-anchor='middle' fill='white' font-size='40' font-weight='bold'%3EDC%3C/text%3E%3C/svg%3E" alt="Logo" class="logo-img" loading="lazy">
                 <h1>DAKAR <span>CHICKEN</span> EXPRESS</h1>
             </div>
             <div class="slogan">Le goût authentique du poulet local - Livraison rapide à Dakar</div>
@@ -152,7 +167,7 @@
     <!-- Modal panier -->
     <div class="cart-modal" id="cartModal">
         <div class="cart-content">
-            <div class="cart-header"><h3><i class="fas fa-shopping-cart"></i> Mon panier</h3><button class="close-cart" id="closeCartBtn" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button></div>
+            <div class="cart-header"><h3><i class="fas fa-shopping-cart"></i> Mon panier</h3><button class="close-cart" id="closeCartBtn" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button></div>
             <div class="cart-items" id="cartItems"></div>
             <div class="cart-total">TOTAL: <span id="cartTotal">0 F CFA</span></div>
             <button class="checkout-btn" id="checkoutBtn">📦 Passer commande</button>
@@ -209,6 +224,75 @@
     <footer><p>&copy; 2026 DAKAR CHICKEN EXPRESS</p></footer>
 
     <script>
+        // ========== OPTIMISATION IMAGES ==========
+        // Images optimisées (conversion WebP si supportée, sinon fallback)
+        const OPTIMIZED_IMAGES = {
+            // Images principales
+            default: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
+            chicken1: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
+            chicken2: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
+            chicken3: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
+            chicken4: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
+            chicken5: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png'
+        };
+        
+        // Fonction pour charger une image avec lazy loading et fallback 
+        function loadOptimizedImage(imgElement, src, retries = 3) {
+            if (!imgElement) return;
+            
+            // Créer un observateur Intersection pour le lazy loading
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const actualSrc = img.getAttribute('data-src');
+                            if (actualSrc) {
+                                // Ajouter paramètres de qualité pour les images externes
+                                let optimizedSrc = actualSrc;
+                                
+                                // Pour Pixabay, ajouter paramètres de qualité
+                                if (actualSrc.includes('pixabay.com')) {
+                                    optimizedSrc = actualSrc + '?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop';
+                                }
+                                
+                                const tempImg = new Image();
+                                tempImg.onload = () => {
+                                    img.src = optimizedSrc;
+                                    img.classList.add('loaded');
+                                };
+                                tempImg.onerror = () => {
+                                    if (retries > 0) {
+                                        setTimeout(() => loadOptimizedImage(img, actualSrc, retries - 1), 500);
+                                    } else {
+                                        img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f5a623"/%3E%3Ctext x="100" y="110" text-anchor="middle" fill="white" font-size="16"%3E🍗%3C/text%3E%3C/svg%3E';
+                                        img.classList.add('loaded');
+                                    }
+                                };
+                                tempImg.src = optimizedSrc;
+                            }
+                            observer.unobserve(img);
+                        }
+                    });
+                }, { rootMargin: '50px', threshold: 0.1 });
+                observer.observe(imgElement);
+            } else {
+                // Fallback pour navigateurs anciens
+                imgElement.src = src;
+                imgElement.classList.add('loaded');
+            }
+        }
+        
+        // Fonction pour créer une image optimisée
+        function createOptimizedImage(src, alt, className) {
+            const img = document.createElement('img');
+            img.className = `${className || ''} lazy`;
+            img.alt = alt || '';
+            img.setAttribute('data-src', src);
+            loadOptimizedImage(img, src);
+            return img;
+        }
+
         // ========== CONFIGURATION FIREBASE ==========
         const firebaseConfig = {
             apiKey: "AIzaSyAAQ9G3w94aM7iGc_ufHMzdCvrwzzEzlhI",
@@ -222,11 +306,10 @@
         const db = firebase.firestore();
 
         // ========== CONFIGURATION WAVE API ==========
-        // REMPLACEZ CES INFOS PAR LES VÔTRES
         const WAVE_CONFIG = {
-            merchantId: "YOUR_MERCHANT_ID",      // Votre ID marchand Wave
-            apiKey: "YOUR_API_KEY",               // Votre clé API Wave
-            secretKey: "YOUR_SECRET_KEY",         // Votre clé secrète
+            merchantId: "YOUR_MERCHANT_ID",
+            apiKey: "YOUR_API_KEY",
+            secretKey: "YOUR_SECRET_KEY",
             callbackUrl: window.location.origin + "/payment-callback"
         };
 
@@ -237,14 +320,14 @@
         let currentTotal = 0;
 
         const categories = [
-            { id: 1, name: "Très petits", weight: "1.0 - 1.1 kg", price: 2000, image: "https://cdn.pixabay.com/photo/2016/02/05/12/31/chicken-1180628_640.jpg" },
-            { id: 2, name: "Petits", weight: "1.2 kg", price: 2500, image: "https://cdn.pixabay.com/photo/2019/03/20/20/39/chicken-4068653_640.jpg" },
-            { id: 3, name: "Moyens-petits", weight: "1.3 - 1.4 kg", price: 3000, image: "https://cdn.pixabay.com/photo/2016/08/30/13/21/rotisserie-chicken-1631133_640.jpg" },
-            { id: 4, name: "Moyens", weight: "1.5 - 1.6 kg", price: 3300, image: "https://cdn.pixabay.com/photo/2017/02/01/12/12/roast-chicken-2029664_640.jpg" },
-            { id: 5, name: "Moyens-grands", weight: "1.7 - 1.9 kg", price: 3500, image: "https://cdn.pixabay.com/photo/2014/11/05/15/57/chicken-518874_640.jpg" },
-            { id: 6, name: "Grands", weight: "2.0 kg", price: 3700, image: "https://cdn.pixabay.com/photo/2018/05/25/10/16/chicken-3428504_640.jpg" },
-            { id: 7, name: "Très grands", weight: "2.1 - 2.3 kg", price: 4000, image: "https://cdn.pixabay.com/photo/2015/11/17/15/39/grilled-chicken-1047768_640.jpg" },
-            { id: 8, name: "Géants", weight: "+2.4 kg", price: 4500, image: "https://cdn.pixabay.com/photo/2020/09/18/21/54/chicken-5583818_640.jpg" }
+            { id: 1, name: "Très petits (1.0-1.1kg)", weight: "1.0 - 1.1 kg", price: 2000, image: OPTIMIZED_IMAGES.default },
+            { id: 2, name: "Petits (1.2 kg)", weight: "1.2 kg", price: 2500, image: OPTIMIZED_IMAGES.default },
+            { id: 3, name: "Moyens-petits (1.3 - 1.4 kg)", weight: "1.3 - 1.4 kg", price: 3000, image: OPTIMIZED_IMAGES.default },
+            { id: 4, name: "Moyens (1.5 - 1.6 kg)", weight: "1.5 - 1.6 kg", price: 3300, image: OPTIMIZED_IMAGES.chicken1 },
+            { id: 5, name: "Moyens-grands (1.7 - 1.9 kg)", weight: "1.7 - 1.9 kg", price: 3500, image: OPTIMIZED_IMAGES.chicken2 },
+            { id: 6, name: "Grands (2.0 kg)", weight: "2.0 kg", price: 3700, image: OPTIMIZED_IMAGES.chicken3 },
+            { id: 7, name: "Très grands (2.1 - 2.3 kg)", weight: "2.1 - 2.3 kg", price: 4000, image: OPTIMIZED_IMAGES.chicken4 },
+            { id: 8, name: "Géants (+2.4 kg)", weight: "+2.4 kg", price: 4500, image: OPTIMIZED_IMAGES.chicken5 }
         ];
 
         // ========== SÉLECTION PAIEMENT ==========
@@ -275,7 +358,6 @@
                 return false;
             }
             
-            // Formater le numéro de téléphone
             let formattedPhone = phone.replace(/\s/g, '');
             if (!formattedPhone.startsWith('221') && !formattedPhone.startsWith('+221')) {
                 formattedPhone = '221' + formattedPhone;
@@ -287,17 +369,9 @@
             document.getElementById('paymentLoading').classList.add('active');
             
             try {
-                // Utiliser l'API Wave pour initier le paiement
-                // Note: Wave nécessite un backend pour la sécurité, voici une simulation avec redirection
-                // Pour une intégration complète, vous devez avoir un backend qui appelle l'API Wave
-                
-                // Méthode 1: Redirection vers l'application Wave (schéma URL)
                 const wavePaymentUrl = `wave://pay?merchant=${WAVE_CONFIG.merchantId}&amount=${total}&currency=XOF&phone=${formattedPhone}&reference=CMD-${Date.now()}`;
-                
-                // Méthode 2: URL web Wave (fallback)
                 const waveWebUrl = `https://wave.com/send?amount=${total}&currency=XOF&phone=${formattedPhone}`;
                 
-                // Sauvegarder les infos de commande temporairement
                 const tempOrder = {
                     total: total,
                     phone: formattedPhone,
@@ -306,15 +380,12 @@
                 };
                 localStorage.setItem('temp_wave_order', JSON.stringify(tempOrder));
                 
-                // Essayer d'ouvrir l'app Wave
                 window.location.href = wavePaymentUrl;
                 
-                // Fallback après 2 secondes si l'app n'est pas installée
                 setTimeout(() => {
                     window.open(waveWebUrl, '_blank');
                 }, 2000);
                 
-                // Attendre le retour de paiement
                 await waitForPaymentConfirmation(total, formattedPhone);
                 
                 document.getElementById('paymentLoading').classList.remove('active');
@@ -328,12 +399,9 @@
             }
         }
         
-        // Attendre la confirmation du paiement
         async function waitForPaymentConfirmation(amount, phone) {
             return new Promise((resolve, reject) => {
-                // Écouter le retour de la page (quand l'utilisateur revient)
                 window.addEventListener('focus', async () => {
-                    // Vérifier si le paiement a été effectué
                     const tempOrder = localStorage.getItem('temp_wave_order');
                     if (tempOrder) {
                         const order = JSON.parse(tempOrder);
@@ -345,7 +413,6 @@
                     }
                 });
                 
-                // Timeout après 5 minutes
                 setTimeout(() => {
                     reject(new Error('Délai de paiement dépassé'));
                 }, 300000);
@@ -443,21 +510,33 @@
             categories.forEach(cat => {
                 const card = document.createElement('div');
                 card.className = 'product-card';
-                card.innerHTML = `
-                    <div class="product-image" style="background-image: url('${cat.image}'); background-size:cover; background-position:center;">
-                        <div class="product-badge">${cat.weight}</div>
+                
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'product-image';
+                
+                const optimizedImg = createOptimizedImage(cat.image, cat.name, 'product-img');
+                imageDiv.appendChild(optimizedImg);
+                
+                const badge = document.createElement('div');
+                badge.className = 'product-badge';
+                badge.textContent = cat.weight;
+                imageDiv.appendChild(badge);
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'product-info';
+                infoDiv.innerHTML = `
+                    <div class="product-name">${cat.name}</div>
+                    <div class="product-price">${cat.price.toLocaleString('fr-FR')} F CFA</div>
+                    <div class="quantity-control">
+                        <button class="quantity-btn" onclick="changeQuantity(${cat.id}, -1)">-</button>
+                        <span class="quantity-value" id="qty-${cat.id}">0</span>
+                        <button class="quantity-btn" onclick="changeQuantity(${cat.id}, 1)">+</button>
                     </div>
-                    <div class="product-info">
-                        <div class="product-name">${cat.name}</div>
-                        <div class="product-price">${cat.price.toLocaleString('fr-FR')} F CFA</div>
-                        <div class="quantity-control">
-                            <button class="quantity-btn" onclick="changeQuantity(${cat.id}, -1)">-</button>
-                            <span class="quantity-value" id="qty-${cat.id}">0</span>
-                            <button class="quantity-btn" onclick="changeQuantity(${cat.id}, 1)">+</button>
-                        </div>
-                        <button class="add-to-cart" onclick="addToCart(${cat.id})"><i class="fas fa-cart-plus"></i> Ajouter</button>
-                    </div>
+                    <button class="add-to-cart" onclick="addToCart(${cat.id})"><i class="fas fa-cart-plus"></i> Ajouter</button>
                 `;
+                
+                card.appendChild(imageDiv);
+                card.appendChild(infoDiv);
                 grid.appendChild(card);
             });
         }
@@ -497,7 +576,7 @@
                         <button onclick="updateCartItem(${item.id}, -1)">-</button>
                         <span>${item.quantity}</span>
                         <button onclick="updateCartItem(${item.id}, 1)">+</button>
-                        <button onclick="removeCartItem(${item.id})" style="background:#fee2e2; color:#ef4444; border:none; padding:5px 10px; border-radius:5px;">🗑️</button>
+                        <button onclick="removeCartItem(${item.id})" style="background:#fee2e2; color:#ef4444; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">🗑️</button>
                     </div>
                 </div>
             `).join('');
