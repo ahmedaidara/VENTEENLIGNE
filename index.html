@@ -303,6 +303,36 @@
 .add-to-cart:disabled:hover {
     transform: none;
 }
+      
+      
+      /* Style pour les prix barrés */
+.original-price {
+    text-decoration: line-through;
+    font-size: 0.9rem;
+    color: #999;
+    margin-right: 10px;
+}
+.promo-price {
+    color: #ef4444;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+.price-container {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+.promo-badge {
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-left: 10px;
+}
     </style>
 </head>
 <body>
@@ -318,7 +348,28 @@
             <i class="fas fa-user-circle"></i>
         </div>
     </div>
+<!-- Panneau admin promotions -->
+<div id="adminPanel" style="background: white; border-radius: 15px; margin: 20px auto; max-width: 500px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="color: #1a1a2e;"><i class="fas fa-tags"></i> Gestion des promotions</h3>
+        <button onclick="toggleAdminPanel()" style="background: #ef4444; color: white; border: none; padding: 5px 15px; border-radius: 8px; cursor: pointer;">Fermer</button>
+    </div>
+    <div id="promosList"></div>
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+        <h4>Ajouter/Modifier une promotion</h4>
+        <select id="promoProductId" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px;">
+            <option value="">-- Choisir un produit --</option>
+        </select>
+        <input type="number" id="promoPrice" placeholder="Prix promo (ex: 1700)" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px;">
+        <button onclick="savePromotion()" style="background: #10b981; color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; cursor: pointer; font-weight: bold;">💾 Enregistrer la promotion</button>
+        <button onclick="deletePromotion()" id="deletePromoBtn" style="background: #ef4444; color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; margin-top: 10px; cursor: pointer; display: none;">🗑️ Supprimer cette promotion</button>
+    </div>
+</div>
 
+<!-- Bouton pour ouvrir/fermer le panneau admin -->
+<button id="adminToggleBtn" onclick="toggleAdminPanel()" style="position: fixed; bottom: 120px; right: 30px; background: #1a1a2e; color: white; width: 50px; height: 50px; border-radius: 50%; border: none; cursor: pointer; z-index: 199; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+    <i class="fas fa-tag"></i>
+</button>
     <div class="container">
         <div class="order-tracking-section" id="orderTrackingSection">
             <h3><i class="fas fa-truck"></i> Suivi de ma commande <span class="order-number" id="currentOrderNumber"></span></h3>
@@ -1121,9 +1172,210 @@ setTimeout(() => {
     makeImagesClickable();
     observeNewImages();
 }, 500);
-      
+      // ========== GESTION DES PROMOTIONS ==========
+let activePromos = {};
+
+// Charger les promotions depuis localStorage
+function loadPromotions() {
+    const saved = localStorage.getItem('dakar_chicken_promos');
+    if (saved) {
+        activePromos = JSON.parse(saved);
+    }
+    updateProductsDisplay();
+}
+
+// Sauvegarder les promotions
+function savePromotions() {
+    localStorage.setItem('dakar_chicken_promos', JSON.stringify(activePromos));
+    updateProductsDisplay();
+}
+
+// Mettre à jour l'affichage des produits avec les promotions
+function updateProductsDisplay() {
+    const grid = document.getElementById('productsGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = '';
+    categories.forEach(cat => {
+        const isPromo = activePromos[cat.id] && activePromos[cat.id].promoPrice > 0;
+        const displayPrice = isPromo ? activePromos[cat.id].promoPrice : cat.price;
+        const originalPrice = cat.price;
+        
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.setAttribute('data-product-id', cat.id);
+        
+        const imageDiv = document.createElement('div');
+        imageDiv.className = 'product-image';
+        
+        const optimizedImg = createOptimizedImage(cat.image, cat.name, 'product-img');
+        imageDiv.appendChild(optimizedImg);
+        
+        // Badge promotion dans l'image si applicable
+        if (isPromo) {
+            const promoBadgeImg = document.createElement('div');
+            promoBadgeImg.className = 'product-badge';
+            promoBadgeImg.style.background = '#ef4444';
+            promoBadgeImg.style.color = 'white';
+            promoBadgeImg.innerHTML = '<i class="fas fa-tag"></i> PROMO';
+            imageDiv.appendChild(promoBadgeImg);
+        } else {
+            const weightBadge = document.createElement('div');
+            weightBadge.className = 'product-badge';
+            weightBadge.textContent = cat.weight;
+            imageDiv.appendChild(weightBadge);
+        }
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'product-info';
+        
+        // Construction du HTML des prix avec ou sans promo
+        let priceHTML = '';
+        if (isPromo) {
+            priceHTML = `
+                <div class="price-container">
+                    <span class="promo-price">${displayPrice.toLocaleString('fr-FR')} F CFA</span>
+                    <span class="original-price">${originalPrice.toLocaleString('fr-FR')} F CFA</span>
+                    <span class="promo-badge">-${Math.round((1 - displayPrice/originalPrice) * 100)}%</span>
+                </div>
+                <div class="product-weight" style="background: #f5a623; color: #1a1a2e; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; display: inline-block; margin-bottom: 10px;">⚖️ ${cat.weight}</div>
+            `;
+        } else {
+            priceHTML = `
+                <div class="product-price">${originalPrice.toLocaleString('fr-FR')} F CFA</div>
+                <div class="product-weight" style="background: #f5a623; color: #1a1a2e; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; display: inline-block; margin-bottom: 10px;">⚖️ ${cat.weight}</div>
+            `;
+        }
+        
+        infoDiv.innerHTML = `
+            <div class="product-name">${cat.name}</div>
+            ${priceHTML}
+            <div class="quantity-control">
+                <button class="quantity-btn" onclick="changeQuantity(${cat.id}, -1)">-</button>
+                <span class="quantity-value" id="qty-${cat.id}">${quantities[cat.id] || 0}</span>
+                <button class="quantity-btn" onclick="changeQuantity(${cat.id}, 1)">+</button>
+            </div>
+            <button class="add-to-cart" onclick="addToCart(${cat.id})"><i class="fas fa-cart-plus"></i> Ajouter</button>
+        `;
+        
+        card.appendChild(imageDiv);
+        card.appendChild(infoDiv);
+        grid.appendChild(card);
+    });
+    
+    // Réappliquer les écouteurs d'images
+    setTimeout(() => {
+        makeImagesClickable();
+    }, 100);
+}
+
+// Ouvrir/Fermer le panneau admin
+function toggleAdminPanel() {
+    const panel = document.getElementById('adminPanel');
+    if (panel.style.display === 'none' || panel.style.display === '') {
+        // Remplir la liste des produits dans le select
+        const select = document.getElementById('promoProductId');
+        select.innerHTML = '<option value="">-- Choisir un produit --</option>';
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            const isPromo = activePromos[cat.id] && activePromos[cat.id].promoPrice > 0;
+            const promoText = isPromo ? ` (PROMO: ${activePromos[cat.id].promoPrice} F)` : '';
+            option.textContent = `${cat.name} - ${cat.price} F${promoText}`;
+            select.appendChild(option);
+        });
+        
+        // Ajouter l'événement de sélection
+        select.onchange = function() {
+            const productId = parseInt(this.value);
+            if (productId && activePromos[productId]) {
+                document.getElementById('promoPrice').value = activePromos[productId].promoPrice;
+                document.getElementById('deletePromoBtn').style.display = 'block';
+            } else {
+                document.getElementById('promoPrice').value = '';
+                document.getElementById('deletePromoBtn').style.display = 'none';
+            }
+        };
+        
+        panel.style.display = 'block';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+// Sauvegarder une promotion
+function savePromotion() {
+    const productId = parseInt(document.getElementById('promoProductId').value);
+    const promoPrice = parseInt(document.getElementById('promoPrice').value);
+    
+    if (!productId) {
+        showNotification('Veuillez choisir un produit', 'error');
+        return;
+    }
+    
+    if (!promoPrice || promoPrice <= 0) {
+        showNotification('Veuillez entrer un prix valide', 'error');
+        return;
+    }
+    
+    const product = categories.find(c => c.id === productId);
+    if (promoPrice >= product.price) {
+        showNotification('Le prix promo doit être inférieur au prix original', 'error');
+        return;
+    }
+    
+    activePromos[productId] = {
+        originalPrice: product.price,
+        promoPrice: promoPrice,
+        dateAdded: new Date().toISOString()
+    };
+    
+    savePromotions();
+    showNotification(`✅ Promotion ajoutée : ${product.name} à ${promoPrice} F au lieu de ${product.price} F`, 'success');
+    
+    // Fermer le panneau
+    toggleAdminPanel();
+}
+
+// Supprimer une promotion
+function deletePromotion() {
+    const productId = parseInt(document.getElementById('promoProductId').value);
+    
+    if (!productId) return;
+    
+    delete activePromos[productId];
+    savePromotions();
+    showNotification(`✅ Promotion supprimée`, 'success');
+    
+    toggleAdminPanel();
+}
+
+// Surcharger la fonction addToCart pour utiliser le prix promo
+const originalAddToCart = window.addToCart;
+window.addToCart = (id) => {
+    const qty = quantities[id] || 0;
+    if (qty === 0) { showNotification('Choisissez une quantité', 'error'); return; }
+    const cat = categories.find(c => c.id === id);
+    const isPromo = activePromos[id] && activePromos[id].promoPrice > 0;
+    const finalPrice = isPromo ? activePromos[id].promoPrice : cat.price;
+    
+    const existing = cart.find(item => item.id === id);
+    if (existing) existing.quantity += qty;
+    else cart.push({ id: cat.id, name: cat.name, price: finalPrice, originalPrice: cat.price, quantity: qty, isPromo: isPromo });
+    
+    quantities[id] = 0;
+    document.getElementById(`qty-${id}`).textContent = '0';
+    updateCartUI();
+    saveCartToLocal();
+    
+    const promoText = isPromo ? ` (PROMO ${finalPrice} F au lieu de ${cat.price} F)` : '';
+    showNotification(`${qty} x ${cat.name}${promoText} ajouté`);
+};
+
+// Initialiser les promotions au chargement
+loadPromotions();
     </script>
-  <!-- Modal plein écran pour les images -->
+  <!-- Modal plein écran pour les images --> 
 <div class="image-modal" id="imageModal">
     <div class="image-modal-content">
         <button class="close-modal-btn" id="closeImageModal">&times;</button>
