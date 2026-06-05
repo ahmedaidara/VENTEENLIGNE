@@ -107,6 +107,202 @@
             .products-grid { gap: 15px; }
             .product-image { height: 180px; }
         }
+      
+      /* Modal plein écran pour les images */
+.image-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 10000;
+    cursor: zoom-out;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+}
+
+.image-modal.active {
+    display: flex;
+}
+
+.image-modal-content {
+    position: relative;
+    max-width: 95%;
+    max-height: 95%;
+    text-align: center;
+    cursor: default;
+}
+
+.image-modal-content img {
+    max-width: 100%;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 5px 30px rgba(0,0,0,0.5);
+    transition: transform 0.2s ease;
+    cursor: zoom-in;
+}
+
+.image-modal-content img.zoomed {
+    transform: scale(1.5);
+    cursor: zoom-out;
+}
+
+.close-modal-btn {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    color: #333;
+}
+
+.close-modal-btn:hover {
+    background: #f5a623;
+    color: white;
+    transform: scale(1.1);
+}
+
+.zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    background: rgba(0,0,0,0.7);
+    padding: 10px 20px;
+    border-radius: 50px;
+    backdrop-filter: blur(10px);
+}
+
+.zoom-controls button {
+    background: white;
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-controls button:hover {
+    background: #f5a623;
+    color: white;
+    transform: scale(1.05);
+}
+
+.zoom-level {
+    color: white;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .zoom-controls button {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+    
+    .image-modal-content img.zoomed {
+        transform: scale(2);
+    }
+}
+      
+      /* Style pour l'indicateur de stock */
+.product-stock {
+    font-size: 0.75rem;
+    margin-top: 5px;
+    padding: 3px 8px;
+    border-radius: 15px;
+    display: inline-block;
+}
+
+.stock-available {
+    background: #10b98120;
+    color: #10b981;
+    border: 1px solid #10b981;
+}
+
+.stock-unavailable {
+    background: #ef444420;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+
+.stock-low {
+    background: #f5a62320;
+    color: #e67e22;
+    border: 1px solid #f5a623;
+}
+
+.product-badge-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.product-weight {
+    background: #f5a623;
+    color: #1a1a2e;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.stock-status {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.status-disponible {
+    background: #10b981;
+    color: white;
+}
+
+.status-epuise {
+    background: #ef4444;
+    color: white;
+}
+
+.status-low {
+    background: #f5a623;
+    color: #1a1a2e;
+}
+
+.add-to-cart:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.add-to-cart:disabled:hover {
+    transform: none;
+}
     </style>
 </head>
 <body>
@@ -226,15 +422,15 @@
     <script>
         // ========== OPTIMISATION IMAGES ==========
         // Images optimisées (conversion WebP si supportée, sinon fallback)
-        const OPTIMIZED_IMAGES = {
-            // Images principales
-            default: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
-            chicken1: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
-            chicken2: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
-            chicken3: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
-            chicken4: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png',
-            chicken5: 'https://i.postimg.cc/pTgyY4tc/Design-sans-titre-(2).png'
-        };
+       const OPTIMIZED_IMAGES = {
+    // On pointe directement vers le fichier local via un chemin relatif
+    default: './design.png',
+    chicken1: './design.png',
+    chicken2: './design.png',
+    chicken3: './design.png',
+    chicken4: './design.png',
+    chicken5: './design.png'
+};
         
         // Fonction pour charger une image avec lazy loading et fallback 
         function loadOptimizedImage(imgElement, src, retries = 3) {
@@ -715,6 +911,230 @@
         loadCartFromLocal();
         checkLastOrder();
         loadUserInfoFromStorage();
+      
+      
+      // ========== FONCTIONNALITÉ PLEIN ÉCRAN ET ZOOM IMAGES ==========
+let currentZoom = 1;
+let currentImageElement = null;
+
+// Fonction pour ouvrir l'image en plein écran
+function openImageFullscreen(imageSrc) {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    
+    if (!modal || !modalImg) return;
+    
+    modalImg.src = imageSrc;
+    modal.classList.add('active');
+    currentZoom = 1;
+    updateZoom();
+    currentImageElement = modalImg;
+}
+
+// Mettre à jour le zoom
+function updateZoom() {
+    if (!currentImageElement) return;
+    currentImageElement.style.transform = `scale(${currentZoom})`;
+    const zoomPercent = Math.round(currentZoom * 100);
+    const zoomLevelSpan = document.getElementById('zoomLevel');
+    if (zoomLevelSpan) zoomLevelSpan.textContent = `${zoomPercent}%`;
+}
+
+// Zoomer
+function zoomIn() {
+    if (currentZoom < 3) {
+        currentZoom += 0.25;
+        updateZoom();
+    }
+}
+
+// Dézoomer
+function zoomOut() {
+    if (currentZoom > 0.5) {
+        currentZoom -= 0.25;
+        updateZoom();
+    }
+}
+
+// Réinitialiser le zoom
+function resetZoom() {
+    currentZoom = 1;
+    updateZoom();
+}
+
+// Gestion du clic sur l'image de produit
+function makeImagesClickable() {
+    // Sélectionner toutes les images de produit
+    const productImages = document.querySelectorAll('.product-image img');
+    
+    productImages.forEach(img => {
+        // Supprimer l'ancien listener pour éviter les doublons
+        img.removeEventListener('click', imageClickHandler);
+        // Ajouter le nouveau listener
+        img.addEventListener('click', imageClickHandler);
+        // Ajouter un style pour indiquer que l'image est cliquable
+        img.style.cursor = 'pointer';
+        img.title = 'Cliquez pour agrandir';
+    });
+}
+
+// Gestionnaire de clic sur l'image
+function imageClickHandler(e) {
+    e.stopPropagation();
+    let imageSrc = this.src;
+    
+    // Si l'image a un data-src (lazy loading), l'utiliser
+    if (this.getAttribute('data-src')) {
+        imageSrc = this.getAttribute('data-src');
+    }
+    
+    openImageFullscreen(imageSrc);
+}
+
+// Fonction pour observer les nouvelles images ajoutées dynamiquement
+function observeNewImages() {
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                // Vérifier si des nouvelles images ont été ajoutées
+                const newImages = document.querySelectorAll('.product-image img:not([data-clickable])');
+                newImages.forEach(img => {
+                    img.setAttribute('data-clickable', 'true');
+                    img.addEventListener('click', imageClickHandler);
+                    img.style.cursor = 'pointer';
+                    img.title = 'Cliquez pour agrandir';
+                });
+            }
+        });
+    });
+    
+    observer.observe(document.getElementById('productsGrid'), { childList: true, subtree: true });
+}
+
+// ========== GESTION DU MODAL ==========
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('imageModal');
+    const closeBtn = document.getElementById('closeImageModal');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const resetZoomBtn = document.getElementById('resetZoomBtn');
+    const modalImg = document.getElementById('modalImage');
+    
+    // Fermer le modal
+    if (closeBtn) {
+        closeBtn.onclick = function() {
+            modal.classList.remove('active');
+            resetZoom();
+        };
+    }
+    
+    // Fermer en cliquant sur le fond
+    if (modal) {
+        modal.onclick = function(e) {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                resetZoom();
+            }
+        };
+    }
+    
+    // Zoom avec les boutons
+    if (zoomInBtn) zoomInBtn.onclick = zoomIn;
+    if (zoomOutBtn) zoomOutBtn.onclick = zoomOut;
+    if (resetZoomBtn) resetZoomBtn.onclick = resetZoom;
+    
+    // Zoom avec la molette de la souris
+    if (modalImg) {
+        modalImg.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        });
+        
+        // Zoom avec double-clic
+        modalImg.addEventListener('dblclick', function(e) {
+            e.stopPropagation();
+            if (currentZoom === 1) {
+                zoomIn();
+            } else {
+                resetZoom();
+            }
+        });
+    }
+    
+    // Gestion du toucher (mobile) pour zoomer
+    let touchStartDistance = 0;
+    let initialZoom = 1;
+    
+    modalImg.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+            initialZoom = currentZoom;
+        }
+    });
+    
+    modalImg.addEventListener('touchmove', function(e) {
+        if (e.touches.length === 2 && touchStartDistance > 0) {
+            e.preventDefault();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const currentDistance = Math.sqrt(dx * dx + dy * dy);
+            const scale = currentDistance / touchStartDistance;
+            let newZoom = initialZoom * scale;
+            newZoom = Math.min(3, Math.max(0.5, newZoom));
+            if (Math.abs(newZoom - currentZoom) > 0.05) {
+                currentZoom = newZoom;
+                updateZoom();
+            }
+        }
+    });
+    
+    modalImg.addEventListener('touchend', function() {
+        touchStartDistance = 0;
+    });
+});
+
+// Surcharger la fonction loadProducts pour ajouter les listeners après chargement
+const originalLoadProducts = loadProducts;
+loadProducts = function() {
+    originalLoadProducts();
+    setTimeout(() => {
+        makeImagesClickable();
+        observeNewImages();
+    }, 100);
+};
+
+// Exécuter après chaque mise à jour du panier (pour les images dynamiques)
+const originalUpdateCartUI = updateCartUI;
+updateCartUI = function() {
+    originalUpdateCartUI();
+    setTimeout(makeImagesClickable, 50);
+};
+
+// Initialisation des listeners après le chargement
+setTimeout(() => {
+    makeImagesClickable();
+    observeNewImages();
+}, 500);
+      
     </script>
+  <!-- Modal plein écran pour les images -->
+<div class="image-modal" id="imageModal">
+    <div class="image-modal-content">
+        <button class="close-modal-btn" id="closeImageModal">&times;</button>
+        <img id="modalImage" src="" alt="Agrandissement">
+        <div class="zoom-controls">
+            <button id="zoomOutBtn" title="Dézoomer">−</button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+            <button id="zoomInBtn" title="Zoomer">+</button>
+            <button id="resetZoomBtn" title="Réinitialiser">⟳</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
