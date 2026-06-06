@@ -1820,12 +1820,25 @@ function selectPaymentMethod(method) {
 }
 
 // Traiter la commande
+// Traiter la commande
 async function processOrder() {
-    const name = document.getElementById('orderName').value.trim();
-    const phone = document.getElementById('orderPhone').value.trim();
-    const phone2 = document.getElementById('orderPhone2').value.trim();
-    const address = document.getElementById('orderAddress').value.trim();
-    const precision = document.getElementById('orderPrecision').value.trim();
+    let name, phone, phone2, address, precision;
+    
+    if (currentUser) {
+        // Utilisateur connecté : prendre ses infos
+        name = currentUser.name;
+        phone = currentUser.phone;
+        phone2 = currentUser.phone2 || '';
+        address = currentUser.address || '';
+        precision = currentUser.precision || '';
+    } else {
+        // Utilisateur non connecté : prendre les valeurs du formulaire
+        name = document.getElementById('orderName').value.trim();
+        phone = document.getElementById('orderPhone').value.trim();
+        phone2 = document.getElementById('orderPhone2').value.trim();
+        address = document.getElementById('orderAddress').value.trim();
+        precision = document.getElementById('orderPrecision').value.trim();
+    }
     
     if (!name || !phone || !address) {
         showNotification("Veuillez remplir tous les champs obligatoires", "error");
@@ -1835,8 +1848,15 @@ async function processOrder() {
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     
     const orderData = {
+        boutique: 'en-ligne',  // 🔥 IMPORTANT : Ajouter ce champ !
         orderNumber: 'CMD-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
-        client: { name, phone, phone2, address, precision },
+        client: { 
+            name: name, 
+            phone: phone, 
+            phone2: phone2, 
+            address: address, 
+            precision: precision 
+        },
         items: cart.map(item => ({
             id: item.id,
             name: item.name,
@@ -1847,8 +1867,11 @@ async function processOrder() {
         total: total,
         paymentMethod: selectedPayment,
         paymentStatus: selectedPayment === 'wave' ? 'en_attente' : 'impaye',
+        paymentReceived: 0,
+        paymentRemaining: total,
         status: 'en_attente',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     
     // Sauvegarder dans Firebase
@@ -1879,6 +1902,7 @@ async function processOrder() {
     }
 }
 
+// Traitement paiement Wave
 // Traitement paiement Wave
 async function processWavePayment(orderData) {
     const phone = orderData.client.phone;
@@ -1911,6 +1935,8 @@ async function processWavePayment(orderData) {
             const order = JSON.parse(tempOrder);
             await db.collection('orders').doc(order.id).update({
                 paymentStatus: 'paye',
+                paymentReceived: order.total,
+                paymentRemaining: 0,
                 paymentDate: firebase.firestore.FieldValue.serverTimestamp()
             });
             localStorage.removeItem('temp_order');
