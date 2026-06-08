@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -812,6 +812,147 @@
 #checkoutModal #orderFormFields[style*="block"] {
     display: none !important;
 }
+      
+      /* Styles pour le suivi de commande */
+.order-tracking-section {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    animation: fadeIn 0.5s ease;
+}
+
+.order-tracking-section h3 {
+    color: #1a1a2e;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.order-tracking-section h3 i {
+    color: #f5a623;
+}
+
+.order-number {
+    background: #f5a62320;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: normal;
+}
+
+.refresh-tracking {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #f5a623;
+    font-size: 1rem;
+    padding: 5px;
+    transition: transform 0.2s;
+}
+
+.refresh-tracking:hover {
+    transform: rotate(180deg);
+}
+
+.progress-container {
+    margin: 20px 0;
+}
+
+.progress-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.progress-step {
+    text-align: center;
+    flex: 1;
+}
+
+.step-circle {
+    width: 40px;
+    height: 40px;
+    background: #e0e0e0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-weight: bold;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.step-circle.completed {
+    background: #10b981;
+    color: white;
+}
+
+.step-circle.active {
+    background: #f5a623;
+    color: white;
+    transform: scale(1.1);
+}
+
+.step-label {
+    font-size: 0.7rem;
+    color: #666;
+}
+
+.progress-bar-container {
+    background: #e0e0e0;
+    border-radius: 10px;
+    height: 8px;
+    margin: 15px 0;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    background: linear-gradient(90deg, #10b981, #f5a623);
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+.order-info-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.info-item {
+    text-align: center;
+}
+
+.info-item .label {
+    font-size: 0.7rem;
+    color: #999;
+    text-transform: uppercase;
+}
+
+.info-item .value {
+    font-weight: bold;
+    color: #1a1a2e;
+    margin-top: 5px;
+}
+
+.status-message {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 0.85rem;
+}
     </style>
 </head>
 <body>
@@ -830,6 +971,51 @@
                 <h2>🍗 Poulet frais du jour</h2>
                 <p>Livraison rapide à domicile • Paiement à la livraison ou Wave</p>
             </div>
+          
+          <!-- SECTION SUIVI COMMANDE -->
+<div class="order-tracking-section" id="orderTrackingSection" style="display: none;">
+    <h3>
+        <i class="fas fa-truck"></i> Suivi de ma commande
+        <span class="order-number" id="currentOrderNumber"></span>
+        <button class="refresh-tracking" onclick="refreshOrderStatus()">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </h3>
+    <div class="progress-container">
+        <div class="progress-steps">
+            <div class="progress-step">
+                <div class="step-circle" id="step1Circle">1</div>
+                <div class="step-label" id="step1Label">📝 En traitement</div>
+            </div>
+            <div class="progress-step">
+                <div class="step-circle" id="step2Circle">2</div>
+                <div class="step-label" id="step2Label">🚚 En livraison</div>
+            </div>
+            <div class="progress-step">
+                <div class="step-circle" id="step3Circle">3</div>
+                <div class="step-label" id="step3Label">✅ Livré</div>
+            </div>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="order-info-card">
+            <div class="info-item">
+                <div class="label">Date</div>
+                <div class="value" id="trackOrderDate">-</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Total</div>
+                <div class="value" id="trackOrderTotal">-</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Paiement</div>
+                <div class="value" id="trackPaymentStatus">-</div>
+            </div>
+        </div>
+        <div class="status-message" id="statusMessage"></div>
+    </div>
+</div>
             <h3 class="section-title">Nos produits</h3>
             <div class="products-grid" id="productsGrid"></div>
         </div>
@@ -947,6 +1133,8 @@
             <button class="edit-profile-btn" onclick="editProfile()">
                 <i class="fas fa-edit"></i> Modifier mes informations
             </button>
+          
+          
             <button class="logout-btn" onclick="logoutUser()">
                 <i class="fas fa-sign-out-alt"></i> Se déconnecter
             </button>
@@ -1883,7 +2071,8 @@ async function processOrder() {
         
         // Sauvegarder dans localStorage pour suivi
         localStorage.setItem('lastOrderId', docRef.id);
-        
+        await displayLastOrderOnHome();
+
         if (selectedPayment === 'wave') {
             await processWavePayment(orderData);
         } else {
@@ -2048,6 +2237,248 @@ async function updateProfile() {
     }
 }
       
+      // ========== SUIVI DE COMMANDE SUR ACCUEIL ==========
+
+// Afficher la dernière commande sur l'accueil
+async function displayLastOrderOnHome() {
+    const lastOrderId = localStorage.getItem('lastOrderId');
+    if (!lastOrderId) {
+        document.getElementById('orderTrackingSection').style.display = 'none';
+        return;
+    }
+    
+    try {
+        const orderDoc = await db.collection('orders').doc(lastOrderId).get();
+        if (!orderDoc.exists) {
+            localStorage.removeItem('lastOrderId');
+            document.getElementById('orderTrackingSection').style.display = 'none';
+            return;
+        }
+        
+        const order = orderDoc.data();
+        order.id = orderDoc.id;
+        
+        // Afficher la commande
+        updateOrderDisplay(order);
+        
+        // 🔥 DÉMARRER L'ÉCOUTE EN TEMPS RÉEL
+        listenToOrderChanges(lastOrderId);
+        
+    } catch (error) {
+        console.error('Erreur chargement commande:', error);
+    }
+}
+
+// Mettre à jour l'affichage de la progression
+function updateProgressStatus(status) {
+    // Définir l'étape actuelle (0,1,2)
+    let currentStep = 0;
+    let statusMessage = '';
+    
+    switch(status) {
+        case 'en_attente':
+        case 'confirmee':
+            currentStep = 0;
+            statusMessage = '📝 Votre commande est en cours de traitement';
+            break;
+        case 'preparation':
+            currentStep = 0;
+            statusMessage = '🍗 Votre commande est en cours de préparation';
+            break;
+        case 'livraison':
+        case 'envoyee':
+            currentStep = 1;
+            statusMessage = '🚚 Votre commande est en route vers chez vous !';
+            break;
+        case 'livree':
+        case 'terminee':
+            currentStep = 2;
+            statusMessage = '✅ Votre commande a été livrée. Bon appétit !';
+            break;
+        default:
+            currentStep = 0;
+            statusMessage = '📝 Commande en cours de traitement';
+    }
+    
+    // Mettre à jour les cercles
+    for (let i = 1; i <= 3; i++) {
+        const circle = document.getElementById(`step${i}Circle`);
+        circle.classList.remove('completed', 'active');
+        
+        if (i - 1 < currentStep) {
+            circle.classList.add('completed');
+        } else if (i - 1 === currentStep) {
+            circle.classList.add('active');
+        }
+    }
+    
+    // Mettre à jour la barre de progression (0%, 50%, 100%)
+    let progressPercent = 0;
+    if (currentStep === 0) progressPercent = 25;
+    else if (currentStep === 1) progressPercent = 65;
+    else if (currentStep === 2) progressPercent = 100;
+    
+    document.getElementById('progressFill').style.width = progressPercent + '%';
+    document.getElementById('statusMessage').textContent = statusMessage;
+}
+
+// Rafraîchir le statut manuellement
+async function refreshOrderStatus() {
+    showNotification('🔄 Mise à jour du suivi...', 'success');
+    await displayLastOrderOnHome();
+}
+      
+      // ========== ÉCOUTE EN TEMPS RÉEL DES CHANGEMENTS DE COMMANDE ==========
+let orderListenerUnsubscribe = null;
+
+function listenToOrderChanges(orderId) {
+    // Arrêter l'écoute précédente si elle existe
+    if (orderListenerUnsubscribe) {
+        orderListenerUnsubscribe();
+    }
+    
+    if (!orderId) return;
+    
+    // Écouter les changements en temps réel sur cette commande
+    orderListenerUnsubscribe = db.collection('orders').doc(orderId)
+        .onSnapshot((doc) => {
+            if (doc.exists) {
+                const order = doc.data();
+                console.log('🔄 Mise à jour commande en temps réel:', order.status, order.paymentStatus);
+                
+                // Mettre à jour l'affichage sans recharger la page
+                updateOrderDisplay(order);
+            } else {
+                // La commande n'existe plus (peut-être supprimée par l'admin)
+                document.getElementById('orderTrackingSection').style.display = 'none';
+                localStorage.removeItem('lastOrderId');
+            }
+        }, (error) => {
+            console.error('Erreur écoute commande:', error);
+        });
+}
+
+// Mettre à jour l'affichage avec les nouvelles données
+function updateOrderDisplay(order) {
+    // 🔥 Vérifier si commande livrée ET entièrement payée
+    const isDelivered = order.status === 'livre';
+    const isFullyPaid = order.paymentStatus === 'paye' || (order.paymentReceived >= order.total);
+    
+    if (isDelivered && isFullyPaid) {
+        // Cacher complètement la section de suivi
+        const section = document.getElementById('orderTrackingSection');
+        if (section) {
+            section.style.display = 'none';
+        }
+        localStorage.removeItem('lastOrderId');
+        if (orderListenerUnsubscribe) {
+            orderListenerUnsubscribe();
+            orderListenerUnsubscribe = null;
+        }
+        console.log('✅ Commande livrée et payée - Suivi masqué');
+        return;
+    }
+    
+    // Le reste du code normal
+    const section = document.getElementById('orderTrackingSection');
+    if (!section) return;
+    
+    section.style.display = 'block';
+    
+    document.getElementById('currentOrderNumber').textContent = order.orderNumber || 'CMD-' + order.id.slice(-6);
+    
+    const orderDate = order.createdAt?.toDate() || new Date();
+    document.getElementById('trackOrderDate').textContent = orderDate.toLocaleDateString('fr-FR');
+    document.getElementById('trackOrderTotal').textContent = (order.total || 0).toLocaleString('fr-FR') + ' F CFA';
+    
+    let paymentStatusText = '';
+    if (order.paymentStatus === 'paye') {
+        paymentStatusText = '✅ Payé - ' + (order.paymentReceived || 0).toLocaleString('fr-FR') + ' F CFA';
+    } else if (order.paymentStatus === 'partiel') {
+        paymentStatusText = '⚠️ Payé partiellement: ' + (order.paymentReceived || 0).toLocaleString('fr-FR') + ' F CFA';
+    } else if (order.paymentMethod === 'wave') {
+        paymentStatusText = '⏳ En attente de paiement Wave';
+    } else {
+        paymentStatusText = '💰 Paiement à la livraison';
+    }
+    document.getElementById('trackPaymentStatus').textContent = paymentStatusText;
+    
+    // Mettre à jour la progression
+    updateProgressStatusWithOrder(order);
+}
+
+// Version améliorée de updateProgressStatus qui utilise les données de la commande
+function updateProgressStatusWithOrder(order) {
+    let currentStep = 0;
+    let statusMessage = '';
+    
+    // Vérifier si la commande est annulée
+    if (order.status === 'annulee') {
+        statusMessage = '❌ Cette commande a été annulée';
+        document.getElementById('statusMessage').textContent = statusMessage;
+        document.getElementById('statusMessage').style.background = '#fee2e2';
+        document.getElementById('statusMessage').style.color = '#dc2626';
+        return;
+    }
+    
+    switch(order.status) {
+        case 'en_attente':
+            currentStep = 0;
+            statusMessage = '📝 Votre commande est en cours de traitement';
+            break;
+        case 'confirmee':
+        case 'preparation':
+            currentStep = 0;
+            statusMessage = '🍗 Votre commande est en cours de préparation';
+            break;
+        case 'en_livraison':
+            currentStep = 1;
+            statusMessage = '🚚 Votre commande est en route vers chez vous !';
+            break;
+        case 'livre':
+            currentStep = 2;
+            statusMessage = '✅ Votre commande a été livrée. Bon appétit !';
+            break;
+        default:
+            currentStep = 0;
+            statusMessage = '📝 Commande en cours de traitement';
+    }
+    
+    // Réinitialiser le style
+    document.getElementById('statusMessage').style.background = '';
+    document.getElementById('statusMessage').style.color = '';
+    
+    // Mettre à jour les cercles
+    for (let i = 1; i <= 3; i++) {
+        const circle = document.getElementById(`step${i}Circle`);
+        if (circle) {
+            circle.classList.remove('completed', 'active');
+            
+            if (i - 1 < currentStep) {
+                circle.classList.add('completed');
+            } else if (i - 1 === currentStep) {
+                circle.classList.add('active');
+            }
+        }
+    }
+    
+    // Mettre à jour la barre de progression
+    let progressPercent = 0;
+    if (currentStep === 0) progressPercent = 25;
+    else if (currentStep === 1) progressPercent = 65;
+    else if (currentStep === 2) progressPercent = 100;
+    
+    const progressFill = document.getElementById('progressFill');
+    if (progressFill) {
+        progressFill.style.width = progressPercent + '%';
+    }
+    
+    const statusMessageEl = document.getElementById('statusMessage');
+    if (statusMessageEl) {
+        statusMessageEl.textContent = statusMessage;
+    }
+}
+      
 async function init() {
     loadCartFromLocal();
     loadFavorites();
@@ -2055,6 +2486,7 @@ async function init() {
     await loadPromotions();  // Attendre le chargement des promotions
     updateCartUI();
    checkLastOrder();
+  await displayLastOrderOnHome();
 }
         
         init();
