@@ -1212,6 +1212,18 @@
     <footer><p>&copy; 2026 DAKAR CHICKEN EXPRESS - Tous droits réservés</p></footer>
 
     <script>
+      
+      // ========== CONFIGURATION WAVE BUSINESS ==========
+const WAVE_CONFIG = {
+    apiKey: "VOTRE_API_KEY_WAVE", // À remplacer par votre clé API
+    secretKey: "VOTRE_SECRET_KEY_WAVE", // À remplacer par votre clé secrète
+    merchantId: "VOTRE_MERCHANT_ID", // Votre ID marchand Wave
+    baseUrl: "https://api.wave.com/v1", // URL de l'API Wave
+    webhookSecret: "VOTRE_WEBHOOK_SECRET", // Secret pour vérifier les webhooks
+    currency: "XOF",
+    successUrl: window.location.origin + "/success.html",
+    cancelUrl: window.location.origin + "/cancel.html"
+};
         // ========== CONFIGURATION FIREBASE ==========
         const firebaseConfig = {
             apiKey: "AIzaSyAAQ9G3w94aM7iGc_ufHMzdCvrwzzEzlhI",
@@ -2092,48 +2104,231 @@ async function processOrder() {
 }
 
 // Traitement paiement Wave
-// Traitement paiement Wave
+// Traitement paiement Wave avec API Business
 async function processWavePayment(orderData) {
-    const phone = orderData.client.phone;
-    let formattedPhone = phone.replace(/\s/g, '');
-    if (!formattedPhone.startsWith('221') && !formattedPhone.startsWith('+221')) {
-        formattedPhone = '221' + formattedPhone;
-    }
-    if (!formattedPhone.startsWith('+')) {
-        formattedPhone = '+' + formattedPhone;
-    }
-    
-    showNotification("Redirection vers Wave...", "success");
-    
-    // Ouvrir l'app Wave
-    const waveUrl = `wave://send?amount=${orderData.total}&currency=XOF&phone=${formattedPhone}`;
-    const webUrl = `https://wave.com/send?amount=${orderData.total}&currency=XOF&phone=${formattedPhone}`;
-    
-    // Sauvegarder la commande temporaire
-    localStorage.setItem('temp_order', JSON.stringify(orderData));
-    
-    window.location.href = waveUrl;
-    setTimeout(() => {
-        window.open(webUrl, '_blank');
-    }, 1000);
-    
-    // Attendre le retour
-    window.addEventListener('focus', async () => {
-        const tempOrder = localStorage.getItem('temp_order');
-        if (tempOrder) {
-            const order = JSON.parse(tempOrder);
-            await db.collection('orders').doc(order.id).update({
-                paymentStatus: 'paye',
-                paymentReceived: order.total,
-                paymentRemaining: 0,
-                paymentDate: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            localStorage.removeItem('temp_order');
-            showNotification(`✅ Paiement Wave effectué ! Commande #${order.orderNumber} confirmée.`, 'success');
-            clearCartAfterOrder();
-            closeCheckoutModal();
+    try {
+        showLoading(true);
+        
+        const phone = orderData.client.phone;
+        let formattedPhone = phone.replace(/\s/g, '');
+        if (!formattedPhone.startsWith('221')) {
+            formattedPhone = '221' + formattedPhone;
         }
-    }, { once: true });
+        
+        // 1. Créer une transaction dans Firebase
+        const transactionRef = db.collection('wave_transactions').doc();
+        const transactionId = transactionRef.id;
+        
+        // 2. Préparer les données pour l'API Wave
+        const wavePaymentData = {
+            amount: orderData.total * 100, // Wave utilise les centimes
+            currency: "XOF",
+            phone_number: formattedPhone,
+            merchant_id: WAVE_CONFIG.merchantId,
+            reference: orderData.orderNumber,
+            description: `Commande ${orderData.orderNumber}`,
+            webhook_url: `${window.location.origin}/webhook-wave.php`, // URL de votre webhook
+            success_url: WAVE_CONFIG.successUrl,
+            cancel_url: WAVE_CONFIG.cancelUrl
+        };
+        
+        // 3. Enregistrer la transaction en attente
+        await transactionRef.set({
+            transactionId: transactionId,
+            orderId: orderData.id,
+            orderNumber: orderData.orderNumber,
+            amount: orderData.total,
+            phone: formattedPhone,
+            status: 'pending',
+            paymentData: wavePaymentData,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 4. Rediriger vers Wave pour le paiement
+        // Utilisation de l'URL de paiement Wave Business
+        const wavePayUrl = `https://wave.com/pay?amount=${orderData.total}&currency=XOF&phone=${formattedPhone}&merchant=${WAVE_CONFIG.merchantId}&reference=${orderData.orderNumber}`;
+        
+        // Ouvrir Wave (si l'app est installée) ou le navigateur
+        const waveAppUrl = `wave://pay?amount=${orderData.total}&currency=XOF&phone=${formattedPhone}&merchant=${WAVE_CONFIG.merchantId}`;
+        
+        // Sauvegarder la transaction en cours
+        localStorage.setItem('current_wave_transaction', JSON.stringify({
+            transactionId: transactionId,
+            orderId: orderData.id,
+            orderNumber: orderData.orderNumber,
+            phone: formattedPhone,
+            amount: orderData.total
+        }));
+        
+        showNotification("Redirection vers Wave...", "success");
+        
+        // Essayer d'ouvrir l'app Wave
+        try {
+            window.location.href = waveAppUrl;
+        } catch (e) {
+            // Si l'app n'est pas installée, ouvrir le navigateur
+            window.open(wavePayUrl, '_blank');
+        }
+        
+        // 5. Démarrer l'écoute du paiement
+        startWavePaymentListener(transactionId, orderData);
+        
+        showLoading(false);
+        
+    } catch (error) {
+        console.error('Erreur paiement Wave:', error);
+        showNotification("Erreur lors du paiement Wave", "error");
+        showLoading(false);
+    }
+}
+
+// Écouter le paiement Wave
+function startWavePaymentListener(transactionId, orderData) {
+    // Vérifier le statut toutes les 3 secondes pendant 2 minutes
+    let attempts = 0;
+    const maxAttempts = 40; // 2 minutes
+    
+    const checkInterval = setInterval(async () => {
+        attempts++;
+        
+        try {
+            const transactionDoc = await db.collection('wave_transactions').doc(transactionId).get();
+            
+            if (transactionDoc.exists) {
+                const transaction = transactionDoc.data();
+                
+                // Si le paiement est confirmé
+                if (transaction.status === 'completed') {
+                    clearInterval(checkInterval);
+                    
+                    // Mettre à jour la commande
+                    await db.collection('orders').doc(orderData.id).update({
+                        paymentStatus: 'paye',
+                        paymentReceived: orderData.total,
+                        paymentRemaining: 0,
+                        paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+                        waveTransactionId: transactionId
+                    });
+                    
+                    showNotification(`✅ Paiement Wave confirmé ! Commande #${orderData.orderNumber} validée.`, 'success');
+                    clearCartAfterOrder();
+                    closeCheckoutModal();
+                    
+                    // Nettoyer
+                    localStorage.removeItem('current_wave_transaction');
+                    
+                    // Afficher le suivi
+                    await displayLastOrderOnHome();
+                }
+                
+                // Si le paiement a échoué
+                if (transaction.status === 'failed' || transaction.status === 'cancelled') {
+                    clearInterval(checkInterval);
+                    showNotification("❌ Le paiement a échoué ou a été annulé", "error");
+                    localStorage.removeItem('current_wave_transaction');
+                }
+            }
+            
+            // Arrêter après maxAttempts
+            if (attempts >= maxAttempts) {
+                clearInterval(checkInterval);
+                // Vérifier une dernière fois le statut
+                const finalCheck = await db.collection('wave_transactions').doc(transactionId).get();
+                if (finalCheck.exists && finalCheck.data().status !== 'completed') {
+                    showNotification("⏳ Temps d'attente dépassé. Vérifiez le statut dans votre compte Wave.", "error");
+                }
+                localStorage.removeItem('current_wave_transaction');
+            }
+            
+        } catch (error) {
+            console.error('Erreur vérification paiement:', error);
+        }
+    }, 3000);
+}
+      
+      
+      // ========== GESTION DES WEBHOOKS WAVE ==========
+
+// Fonction appelée par le webhook Wave
+async function handleWaveWebhook(req, res) {
+    try {
+        // Vérifier la signature du webhook
+        const signature = req.headers['x-wave-signature'];
+        const payload = req.body;
+        
+        // Vérifier la signature (à implémenter selon la doc Wave)
+        // if (!verifyWaveSignature(payload, signature)) {
+        //     return res.status(401).json({ error: 'Invalid signature' });
+        // }
+        
+        const { transaction_id, status, amount, phone, reference } = payload;
+        
+        // Trouver la transaction dans Firebase
+        const transactionsRef = db.collection('wave_transactions');
+        const snapshot = await transactionsRef.where('transactionId', '==', transaction_id).get();
+        
+        if (snapshot.empty) {
+            // Chercher par référence (orderNumber)
+            const orderSnapshot = await db.collection('orders').where('orderNumber', '==', reference).get();
+            if (orderSnapshot.empty) {
+                return res.status(404).json({ error: 'Transaction not found' });
+            }
+            
+            // Mettre à jour la commande directement
+            const orderDoc = orderSnapshot.docs[0];
+            await orderDoc.ref.update({
+                paymentStatus: status === 'completed' ? 'paye' : 'failed',
+                paymentReceived: status === 'completed' ? amount / 100 : 0,
+                paymentRemaining: status === 'completed' ? 0 : amount / 100,
+                paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+                waveTransactionId: transaction_id
+            });
+            
+            return res.status(200).json({ success: true });
+        }
+        
+        // Mettre à jour la transaction
+        const transactionDoc = snapshot.docs[0];
+        await transactionDoc.ref.update({
+            status: status,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            webhookReceived: true,
+            webhookData: payload
+        });
+        
+        // Si le paiement est complété, mettre à jour la commande
+        if (status === 'completed') {
+            const orderData = transactionDoc.data();
+            if (orderData.orderId) {
+                await db.collection('orders').doc(orderData.orderId).update({
+                    paymentStatus: 'paye',
+                    paymentReceived: orderData.amount,
+                    paymentRemaining: 0,
+                    paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+                    waveTransactionId: transaction_id
+                });
+            }
+        }
+        
+        res.status(200).json({ success: true });
+        
+    } catch (error) {
+        console.error('Erreur webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+// Vérifier la signature du webhook (à implémenter selon votre clé)
+function verifyWaveSignature(payload, signature) {
+    // Implémentez la vérification selon la doc Wave
+    // Exemple avec crypto:
+    // const crypto = require('crypto');
+    // const expected = crypto.createHmac('sha256', WAVE_CONFIG.webhookSecret)
+    //     .update(JSON.stringify(payload))
+    //     .digest('hex');
+    // return expected === signature;
+    return true; // À remplacer par la vérification réelle
 }
 
 // Vider le panier après commande
@@ -2487,6 +2682,7 @@ async function init() {
     updateCartUI();
    checkLastOrder();
   await displayLastOrderOnHome();
+  await checkPendingWavePayments(); 
 }
         
         init();
@@ -2737,7 +2933,7 @@ async function init() {
 #checkoutModal .modal-body::-webkit-scrollbar {
     width: 5px;
 }
-
+ 
 #checkoutModal .modal-body::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
